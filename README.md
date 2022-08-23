@@ -12,4 +12,6 @@ $ docker-compose -f docker/docker-compose.yml up -d    # run the application
 
 ```
 
-Open http://localhost:8000/ and check the application.
+- Open http://localhost:8000/ and check the application.
+- Open http://localhost:9090/ and check Prometheus.
+- Open http://localhost:3000/ and check Grafana (user/password: admin/admin).
