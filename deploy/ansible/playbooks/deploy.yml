@@ -1,0 +1,33 @@
+---
+- name: Deploy the application
+  hosts: env
+  become: true
+  gather_facts: false
+
+  vars:
+    username: unknown
+    rabbitmq_username: rabbitmq
+    rabbitmq_password: password
+    crawler_version: latest
+    ui_version: latest
+
+  tasks:
+    - name: Create docker-compose.yml
+      template:
+        src: docker-compose.yml.j2
+        dest: /home/ubuntu/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: 0644
+
+    - name: Copy configuration files
+      copy:
+        src: "{{ playbook_dir }}/../../../docker/conf"
+        dest: /home/ubuntu
+        owner: ubuntu
+        group: ubuntu
+        mode: 0755
+
+    - name: Start the application
+      community.docker.docker_compose:
+        project_src: /home/ubuntu

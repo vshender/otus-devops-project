@@ -6,3 +6,15 @@
 
 search_engine_crawler
 search_engine_ui
+
+.terraform
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+inventory
+inventory.backup
+
+yc-svc-key.json
+gitlab_access_token

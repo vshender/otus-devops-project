@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: Node Exporter
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards/node-exporter-full.json
+
+  - name: RabbitMQ Overview
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards/rabbitmq-overview.json

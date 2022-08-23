@@ -1,0 +1,9 @@
+${ gitlab_vm.name } ansible_host=${ gitlab_vm.network_interface[0].nat_ip_address }
+
+[gitlab_runners]
+${ gitlab_runner_vm.name } ansible_host=${ gitlab_runner_vm.network_interface[0].nat_ip_address }
+
+[app]
+%{ for vm in [ staging_vm, production_vm ] ~}
+${ vm.name } ansible_host=${ vm.network_interface[0].nat_ip_address }
+%{ endfor ~}

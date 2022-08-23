@@ -1,0 +1,60 @@
+---
+- name: Create GitLab personal access token
+  hosts: gitlab
+  become: false
+  gather_facts: false
+
+  vars:
+    gitlab_access_token_file: "{{ playbook_dir }}/../../gitlab_access_token"
+    gitlab_host: http://{{ ansible_host }}
+
+  tasks:
+    # IF
+    - name: Check if a GitLab personal access token was created
+      delegate_to: localhost
+      stat:
+        path: "{{ gitlab_access_token_file }}"
+      register: stat_access_token
+      tags: run_gitlab
+
+    # THEN
+    - name: Create a GitLab personal access token
+      delegate_to: localhost
+      shell: |
+        pip install -r "{{ playbook_dir }}/../util/requirements.txt" > /dev/null
+        python "{{ playbook_dir }}/../util/create_gitlab_personal_token.py" {{ gitlab_host }} root {{ gitlab_password }}
+      retries: 50
+      delay: 30
+      register: personal_access_token_output
+      when: run_gitlab.changed or not stat_access_token.stat.exists
+      until: personal_access_token_output.rc == 0
+      tags: run_gitlab
+
+    - name: Extract the created GitLab personal access token
+      set_fact:
+        gitlab_access_token: "{{ personal_access_token_output.stdout }}"
+      when: run_gitlab.changed or not stat_access_token.stat.exists
+      tags: run_gitlab
+
+    - name: Save the created GitLab personal access token
+      delegate_to: localhost
+      copy:
+        content: "{{ gitlab_access_token }}"
+        dest: "{{ gitlab_access_token_file }}"
+      when: run_gitlab.changed or not stat_access_token.stat.exists
+      tags: run_gitlab
+
+    # ELSE
+    - name: Obtain the Gitlab personal acccess token
+      delegate_to: localhost
+      command: cat "{{ gitlab_access_token_file }}"
+      changed_when: false
+      register: personal_access_token_output
+      when: not run_gitlab.changed and stat_access_token.stat.exists
+      tags: run_gitlab
+
+    - name: Extract the created GitLab personal access token
+      set_fact:
+        gitlab_access_token: "{{ personal_access_token_output.stdout }}"
+      when: not run_gitlab.changed and stat_access_token.stat.exists
+      tags: run_gitlab

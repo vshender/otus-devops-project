@@ -1,0 +1,67 @@
+---
+- name: Configure GitLab
+  hosts: gitlab
+  become: false
+  gather_facts: false
+
+  vars:
+    gitlab_host: http://{{ ansible_host }}
+    docker_hub_login: unknown
+    docker_hub_password: unknown
+
+  tasks:
+    - name: Install dependencies
+      pip:
+        name: python-gitlab
+        version: 3.8.1
+
+    # - name: Create GitLab group for the project
+    #   community.general.gitlab_group:
+    #     api_url: http://{{ ansible_host }}
+    #     api_token: "{{ gitlab_access_token }}"
+    #     validate_certs: false
+    #     name: otus-project
+    #     path: otus-project
+    #     state: present
+
+    - name: Create GitLab projects
+      community.general.gitlab_project:
+        api_url: "{{ gitlab_host }}"
+        api_token: "{{ gitlab_access_token }}"
+        name: "{{ item.name }}"
+        import_url: "{{ item.url }}"
+        shared_runners_enabled: yes
+        merge_method: rebase_merge
+      with_items:
+        - name: search_engine_crawler
+          url: https://github.com/vshender/search_engine_crawler.git
+        - name: search_engine_ui
+          url: https://github.com/vshender/search_engine_ui.git
+
+    - name: Extract SSH private key
+      delegate_to: localhost
+      slurp:
+        src: ~/.ssh/appuser
+      register: ssh_private_key_file
+
+    - name: Set CI/CD variables
+      community.general.gitlab_project_variable:
+        api_url: "{{ gitlab_host }}"
+        api_token: "{{ gitlab_access_token }}"
+        project: root/{{ item }}
+        variables:
+          - name: DOCKER_HUB_LOGIN
+            value: "{{ docker_hub_login }}"
+          - name: DOCKER_HUB_PASSWORD
+            value: "{{ docker_hub_password }}"
+            masked: true
+          - name: STAGING_HOST
+            value: "{{ hostvars['staging']['ansible_host'] }}"
+          - name: PRODUCTION_HOST
+            value: "{{ hostvars['production']['ansible_host'] }}"
+          - name: SSH_PRIVATE_KEY
+            value: "{{ ssh_private_key_file.content }}"
+            masked: true
+      with_items:
+        - search_engine_crawler
+        - search_engine_ui

@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.38.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention=1d
+    ports:
+      - 9090:9090
+    volumes:
+      - ./conf/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - search_engine
+
+  node-exporter:
+    image: prom/node-exporter:v1.3.1
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"
+    # user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - search_engine
+
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.34.0
+    command:
+      - --mongodb.uri=mongodb://mongodb:27017
+      - --collect-all
+    networks:
+      - search_engine
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.22.0
+    volumes:
+      - ./conf/blackbox-exporter/config.yml:/etc/blackbox_exporter/config.yml
+    networks:
+      - search_engine
+
+  grafana:
+    image: grafana/grafana:9.1.0
+    ports:
+      - 3000:3000
+    volumes:
+      - ./conf/grafana/provisioning:/etc/grafana/provisioning
+      - ./conf/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    networks:
+      - search_engine
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  search_engine:

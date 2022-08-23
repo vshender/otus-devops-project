@@ -1,0 +1,56 @@
+---
+- name: Create GitLab runners
+  hosts: gitlab_runners
+  become: true
+  gather_facts: false
+
+  vars:
+    runners_per_vm_count: 2
+    gitlab_host: http://{{ hostvars['gitlab']['ansible_host'] }}
+
+  tasks:
+    - name: Obtain GitLab runners registration token
+      delegate_to: gitlab
+      community.docker.docker_container_exec:
+        container: gitlab
+        command: gitlab-rails runner "puts Gitlab::CurrentSettings.current_application_settings.runners_registration_token"
+      register: runners_registration_token_output
+      changed_when: false
+
+    - name: Extract GitLab runners registration token
+      set_fact:
+        gitlab_runners_token: "{{ runners_registration_token_output.stdout }}"
+
+    - name: Create GitLab runners
+      docker_container:
+        name: "gitlab-runner-{{ item }}"
+        state: started
+        restart: false
+        restart_policy: always
+        volumes:
+          - /srv/gitlab-runner/config:/etc/gitlab-runner
+          - /var/run/docker.sock:/var/run/docker.sock
+        image: gitlab/gitlab-runner:latest
+      with_sequence: start=1 end={{ runners_per_vm_count }}
+      register: create_gitlab_runners
+      tags:
+        - create_runners
+
+    - name: Register GitLab runners
+      community.docker.docker_container_exec:
+        container: "gitlab-runner-{{ item }}"
+        command: >-
+          gitlab-runner register
+          --url {{ gitlab_host }}
+          --registration-token {{ gitlab_runners_token }}
+          --docker-privileged
+          --non-interactive
+          --locked=false
+          --name DockerRunner-{{ item }}
+          --executor docker
+          --docker-image docker:19.03.1
+          --run-untagged
+      with_sequence: start=1 end={{ runners_per_vm_count }}
+      when: create_gitlab_runners.changed
+      tags:
+        - create_runners
