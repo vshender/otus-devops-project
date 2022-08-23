@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:4.4
+    volumes:
+      - search_engine_db:/data/db
+    networks:
+      search_engine:
+
+  rabbitmq:
+    image: bitnami/rabbitmq:3.10
+    environment:
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    volumes:
+      - search_engine_mq:/bitnami/rabbitmq/mnesia
+    networks:
+      search_engine:
+
+  crawler:
+    image: ${USERNAME}/search_engine_crawler:${CRAWLER_VERSION}
+    environment:
+      - MONGO=mongodb
+      - RMQ_HOST=rabbitmq
+      - RMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    networks:
+      search_engine:
+    depends_on:
+      - mongodb
+      - rabbitmq
+    restart: on-failure
+
+  ui:
+    image: ${USERNAME}/search_engine_ui:${UI_VERSION}
+    ports:
+      - 8000:8000
+    environment:
+      - MONGO=mongodb
+    networks:
+      search_engine:
+    depends_on:
+      - mongodb
+
+volumes:
+  search_engine_db:
+  search_engine_mq:
+
+networks:
+  search_engine:
